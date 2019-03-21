@@ -7,7 +7,8 @@ import (
 )
 
 func main() {
-	Logger := logger.New(logger.LevelDebug)
+	Logger := logger.New(logger.LevelDebug, true)
+	defer Logger.Close()
 
 	Logger.Debugln("debug")
 	Logger.Info("info\n")

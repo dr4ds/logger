@@ -32,6 +32,7 @@ const (
 )
 
 type Logger struct {
+	file   *os.File
 	writer io.Writer
 	mux    sync.Mutex
 	buf    []byte
@@ -45,26 +46,41 @@ func getTimeNow() string {
 		t.Hour(), t.Minute(), t.Second())
 }
 
-func New(lvl LogLevel) *Logger {
+func New(lvl LogLevel, OutputToFile bool) *Logger {
 	l := new(Logger)
 	l.level = lvl
 
-	if _, err := os.Stat("logs"); os.IsNotExist(err) {
-		err := os.Mkdir("logs", 0666)
+	if OutputToFile {
+		var err error
+		if _, err = os.Stat("logs"); os.IsNotExist(err) {
+			err = os.Mkdir("logs", 0666)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		var f *os.File
+		f, err = os.Create("logs/" + strings.Replace(getTimeNow(), ":", "_", -1) + ".log")
 		if err != nil {
 			panic(err)
 		}
+		l.writer = io.MultiWriter(os.Stdout, f)
+	} else {
+		l.writer = os.Stdout
 	}
-
-	f, err := os.Create("logs/" + strings.Replace(getTimeNow(), ":", "_", -1) + ".log")
-
-	if err != nil {
-		panic(err)
-	}
-
-	l.writer = io.MultiWriter(os.Stdout, f)
 
 	return l
+}
+
+func (l *Logger) Close() {
+	if l.file != nil {
+		l.file.Close()
+	}
+}
+
+func (l *Logger) SetWriter(w io.Writer) {
+	l.Close()
+	l.writer = w
 }
 
 func (l *Logger) Log(s string, logType LogType) {
